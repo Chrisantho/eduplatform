@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 - **Feb 2026**: Restructured project into three independent folders (frontend, backend, database). Backend completely rewritten from Node.js/Express to Java Spring Boot. Frontend updated to use standalone Vite config with API proxy to Spring Boot backend. All features preserved: auth, exams, notifications, profile, password reset.
+- **Feb 2026**: Added SendGrid email integration for password reset. Email service runs as a Node.js HTTP server (port 3001) in the orchestrator, using Replit's SendGrid connector for credentials. Spring Boot backend calls this internal service when sending password reset codes. The EMAIL_SERVICE_URL environment variable is set automatically by the orchestrator.
 
 ## System Architecture
 

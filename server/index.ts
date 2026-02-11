@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+import { startEmailService } from "./email-service.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -43,7 +44,7 @@ function startBackend(): ChildProcess {
   const proc = spawn("java", ["-jar", jarPath], {
     cwd: path.join(ROOT, "backend"),
     stdio: "inherit",
-    env: { ...process.env },
+    env: { ...process.env, EMAIL_SERVICE_URL: "http://127.0.0.1:3001/send-email" },
   });
   proc.on("error", (err) => log(`Backend error: ${err.message}`, "backend"));
   proc.on("close", (code) => log(`Backend exited with code ${code}`, "backend"));
@@ -83,6 +84,7 @@ async function waitForBackend(maxWait = 30000): Promise<void> {
 async function main() {
   await buildBackendIfNeeded();
 
+  const emailServer = startEmailService(3001, log);
   const backend = startBackend();
   await waitForBackend();
   const frontend = startFrontend();
@@ -91,6 +93,7 @@ async function main() {
     log("Shutting down...");
     backend.kill();
     frontend.kill();
+    emailServer.close();
     process.exit(0);
   };
 

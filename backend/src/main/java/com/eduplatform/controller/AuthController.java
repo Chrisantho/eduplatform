@@ -4,6 +4,7 @@ import com.eduplatform.dto.*;
 import com.eduplatform.model.PasswordReset;
 import com.eduplatform.model.User;
 import com.eduplatform.repository.UserRepository;
+import com.eduplatform.service.EmailService;
 import com.eduplatform.service.NotificationService;
 import com.eduplatform.service.PasswordResetService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,16 +35,19 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final NotificationService notificationService;
     private final PasswordResetService passwordResetService;
+    private final EmailService emailService;
 
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager,
                           NotificationService notificationService,
-                          PasswordResetService passwordResetService) {
+                          PasswordResetService passwordResetService,
+                          EmailService emailService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.notificationService = notificationService;
         this.passwordResetService = passwordResetService;
+        this.emailService = emailService;
     }
 
     @PostMapping("/register")
@@ -147,7 +151,7 @@ public class AuthController {
         if (user == null) return ResponseEntity.ok(Map.of("message", genericMessage));
 
         String code = passwordResetService.createResetCode(user.getId());
-        System.out.println("Password reset code for " + request.getEmail() + ": " + code);
+        emailService.sendPasswordResetCode(request.getEmail(), code, user.getFullName());
 
         return ResponseEntity.ok(Map.of("message", genericMessage));
     }

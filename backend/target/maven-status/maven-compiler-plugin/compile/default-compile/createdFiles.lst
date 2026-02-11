@@ -2,6 +2,7 @@ com/eduplatform/config/WebConfig.class
 com/eduplatform/repository/AnswerRepository.class
 com/eduplatform/model/Submission.class
 com/eduplatform/dto/CreateExamRequest$QuestionDto.class
+com/eduplatform/service/EmailService.class
 com/eduplatform/dto/ProfileUpdateRequest.class
 com/eduplatform/dto/ForgotPasswordRequest.class
 com/eduplatform/model/Answer.class
