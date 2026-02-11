@@ -153,5 +153,6 @@ export type QuestionWithOptions = Question & { options: Option[] };
 export type ExamWithQuestions = Exam & { questions: QuestionWithOptions[] };
 export type SubmissionWithDetails = Submission & { exam: Exam };
 
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type CreateExamRequest = z.infer<typeof createExamRequestSchema>;
 export type SubmitExamRequest = z.infer<typeof submitExamRequestSchema>;

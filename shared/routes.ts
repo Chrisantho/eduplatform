@@ -101,6 +101,16 @@ export const api = {
         401: errorSchemas.unauthorized,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/exams/:id' as const,
+      input: createExamRequestSchema,
+      responses: {
+        200: z.custom<typeof exams.$inferSelect>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
     start: {
       method: 'POST' as const,
       path: '/api/exams/:id/start' as const,

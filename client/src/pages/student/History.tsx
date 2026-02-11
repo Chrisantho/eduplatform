@@ -24,7 +24,7 @@ export default function ExamHistory() {
       <div className="container mx-auto px-4 py-8 text-center">
         <h2 className="text-2xl font-bold">Submission not found</h2>
         <Link href="/student">
-          <Button variant="link" className="mt-4">Back to Dashboard</Button>
+          <Button variant="ghost" className="mt-4">Back to Dashboard</Button>
         </Link>
       </div>
     );
@@ -94,7 +94,7 @@ export default function ExamHistory() {
               <Clock className="h-5 w-5 text-primary mt-0.5" />
               <div>
                 <p className="text-sm font-medium">Status</p>
-                <p className="text-sm text-muted-foreground capitalize">{submission.status.toLowerCase()}</p>
+                <p className="text-sm text-muted-foreground capitalize">{(submission.status || "").toLowerCase()}</p>
               </div>
             </div>
           </CardContent>

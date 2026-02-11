@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useExams, useDeleteExam, useCreateExam } from "@/hooks/use-exams";
+import { useState, useEffect } from "react";
+import { useExams, useDeleteExam, useCreateExam, useExam, useUpdateExam } from "@/hooks/use-exams";
 import { useSubmissions } from "@/hooks/use-submissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Users, FileText, Clock, BarChart3, Loader2 } from "lucide-react";
+import { Plus, Trash2, Users, FileText, Clock, BarChart3, Loader2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { CreateExamRequest } from "@shared/routes";
@@ -136,6 +136,7 @@ export default function AdminDashboard() {
 function ExamCard({ exam }: { exam: any }) {
   const { mutate: deleteExam, isPending } = useDeleteExam();
   const { toast } = useToast();
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this exam?")) {
@@ -148,7 +149,7 @@ function ExamCard({ exam }: { exam: any }) {
   };
 
   return (
-    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow">
+    <Card className="flex flex-col h-full hover:shadow-lg transition-shadow" data-testid={`card-exam-${exam.id}`}>
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="line-clamp-1">{exam.title}</CardTitle>
@@ -169,31 +170,86 @@ function ExamCard({ exam }: { exam: any }) {
           <span>Created {format(new Date(exam.createdAt), "MMM d, yyyy")}</span>
         </div>
       </CardContent>
-      <CardFooter className="pt-4 border-t">
+      <CardFooter className="pt-4 border-t gap-2">
+        <CreateExamDialog 
+          editingExamId={exam.id} 
+          externalOpen={editOpen} 
+          setExternalOpen={setEditOpen} 
+        />
         <Button 
           variant="destructive" 
           size="sm" 
-          className="w-full"
+          className="flex-1"
           onClick={handleDelete}
           disabled={isPending}
+          data-testid={`button-delete-exam-${exam.id}`}
         >
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4 mr-2" /> Delete Exam</>}
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-4 w-4 mr-2" /> Delete</>}
         </Button>
       </CardFooter>
     </Card>
   );
 }
 
-function CreateExamDialog() {
-  const [open, setOpen] = useState(false);
+function CreateExamDialog({ 
+  editingExamId, 
+  externalOpen, 
+  setExternalOpen 
+}: { 
+  editingExamId?: number;
+  externalOpen?: boolean;
+  setExternalOpen?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = setExternalOpen !== undefined ? setExternalOpen : setInternalOpen;
+
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState(60);
   const [questions, setQuestions] = useState<any[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const { mutate: createExam, isPending } = useCreateExam();
+  const { data: existingExam, isLoading: loadingExam } = useExam(editingExamId || 0);
+  const { mutate: createExam, isPending: isCreating } = useCreateExam();
+  const { mutate: updateExam, isPending: isUpdating } = useUpdateExam(editingExamId || 0);
+  const isPending = isCreating || isUpdating;
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (editingExamId && existingExam && open && !loaded) {
+      setTitle(existingExam.title);
+      setDescription(existingExam.description || "");
+      setDuration(existingExam.duration);
+      setQuestions(
+        (existingExam.questions || []).map((q: any) => ({
+          text: q.text,
+          type: q.type,
+          points: q.points,
+          options: (q.options || []).map((o: any) => ({
+            text: o.text,
+            isCorrect: o.isCorrect
+          }))
+        }))
+      );
+      setStep(2);
+      setLoaded(true);
+    }
+  }, [editingExamId, existingExam, open, loaded]);
+
+  useEffect(() => {
+    if (!open) {
+      setLoaded(false);
+      if (!editingExamId) {
+        setStep(1);
+        setTitle("");
+        setDescription("");
+        setDuration(60);
+        setQuestions([]);
+      }
+    }
+  }, [open, editingExamId]);
 
   const addQuestion = (type: "MCQ" | "SHORT_ANSWER" = "MCQ") => {
     setQuestions([
@@ -254,31 +310,37 @@ function CreateExamDialog() {
       }))
     };
 
-    createExam(payload, {
-      onSuccess: () => {
-        toast({ title: "Success", description: "Exam created successfully!" });
-        setOpen(false);
-        setStep(1);
-        setTitle("");
-        setDescription("");
-        setQuestions([]);
-      },
-      onError: (err) => {
-        toast({ variant: "destructive", title: "Error", description: err.message });
-      }
-    });
+    const onSuccess = () => {
+      toast({ title: "Success", description: `Exam ${editingExamId ? "updated" : "created"} successfully!` });
+      setOpen(false);
+    };
+    const onError = (err: Error) => {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    };
+
+    if (editingExamId) {
+      updateExam(payload, { onSuccess, onError });
+    } else {
+      createExam(payload, { onSuccess, onError });
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="shadow-lg shadow-primary/20">
-          <Plus className="mr-2 h-4 w-4" /> Create New Exam
-        </Button>
+        {editingExamId ? (
+          <Button variant="outline" size="sm" className="flex-1" data-testid={`button-edit-exam-${editingExamId}`}>
+            <Pencil className="h-4 w-4 mr-2" /> Edit
+          </Button>
+        ) : (
+          <Button className="shadow-lg shadow-primary/20" data-testid="button-create-exam">
+            <Plus className="mr-2 h-4 w-4" /> Create New Exam
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Assessment</DialogTitle>
+          <DialogTitle>{editingExamId ? "Edit Assessment" : "Create New Assessment"}</DialogTitle>
           <DialogDescription>
             {step === 1 ? "Set up basic exam details" : "Add questions to your exam"}
           </DialogDescription>
@@ -380,9 +442,9 @@ function CreateExamDialog() {
           {step === 1 ? (
             <Button onClick={() => setStep(2)} disabled={!title}>Next: Add Questions</Button>
           ) : (
-            <Button onClick={handleSubmit} disabled={isPending || questions.length === 0}>
+            <Button onClick={handleSubmit} disabled={isPending || questions.length === 0} data-testid="button-submit-exam">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Exam
+              {editingExamId ? "Update Exam" : "Create Exam"}
             </Button>
           )}
         </DialogFooter>

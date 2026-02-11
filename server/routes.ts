@@ -60,7 +60,7 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const exam = await storage.getExam(Number(req.params.id));
     if (!exam) return res.status(404).json({ message: "Exam not found" });
-    if (req.user!.role === "STUDENT") {
+    if ((req.user as any).role === "STUDENT") {
       const sanitizedQuestions = exam.questions.map(q => ({
         ...q,
         options: q.options.map((o: any) => ({ ...o, isCorrect: undefined }))
@@ -71,10 +71,10 @@ export async function registerRoutes(
   });
 
   app.post(api.exams.create.path, async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "ADMIN") return res.sendStatus(401);
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(401);
     try {
       const input = createExamRequestSchema.parse(req.body);
-      const exam = await storage.createExam(req.user!.id, input);
+      const exam = await storage.createExam((req.user as any).id, input);
       res.status(201).json(exam);
     } catch (e) {
       if (e instanceof z.ZodError) {
@@ -85,25 +85,43 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.exams.update.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(401);
+    try {
+      const input = createExamRequestSchema.parse(req.body);
+      const exam = await storage.updateExam(Number(req.params.id), input);
+      if (!exam) return res.status(404).json({ message: "Exam not found" });
+      res.json(exam);
+    } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: e.errors });
+      } else if (e.message?.includes("Cannot edit")) {
+        res.status(400).json({ message: e.message });
+      } else {
+        res.status(500).json({ message: "Internal server error" });
+      }
+    }
+  });
+
   app.delete(api.exams.delete.path, async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "ADMIN") return res.sendStatus(401);
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(401);
     await storage.deleteExam(Number(req.params.id));
     res.sendStatus(200);
   });
 
   app.post(api.exams.start.path, async (req, res) => {
-    if (!req.isAuthenticated() || req.user!.role !== "STUDENT") return res.sendStatus(401);
+    if (!req.isAuthenticated() || (req.user as any).role !== "STUDENT") return res.sendStatus(401);
     const examId = Number(req.params.id);
-    const submissions = await storage.getUserSubmissions(req.user!.id);
-    const existing = submissions.find(s => s.examId === examId && s.status === "IN_PROGRESS");
+    const userSubmissions = await storage.getUserSubmissions((req.user as any).id);
+    const existing = userSubmissions.find(s => s.examId === examId && s.status === "IN_PROGRESS");
     if (existing) return res.json(existing);
-    const submission = await storage.createSubmission(req.user!.id, examId);
+    const submission = await storage.createSubmission((req.user as any).id, examId);
     res.status(201).json(submission);
   });
 
   app.get(api.submissions.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const subs = await storage.getUserSubmissions(req.user!.id);
+    const subs = await storage.getUserSubmissions((req.user as any).id);
     res.json(subs);
   });
 
@@ -112,7 +130,7 @@ export async function registerRoutes(
     const submissionId = Number(req.params.id);
     const submission = await storage.getSubmission(submissionId);
     if (!submission) return res.sendStatus(404);
-    if (submission.studentId !== req.user!.id) return res.sendStatus(403);
+    if (submission.studentId !== (req.user as any).id) return res.sendStatus(403);
     if (submission.status === "COMPLETED") return res.status(400).json({ message: "Already submitted" });
     try {
       const input = submitExamRequestSchema.parse(req.body);
@@ -159,7 +177,7 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const submission = await storage.getSubmission(Number(req.params.id));
     if (!submission) return res.status(404).json({ message: "Submission not found" });
-    if (req.user!.role !== "ADMIN" && submission.studentId !== req.user!.id) return res.sendStatus(403);
+    if ((req.user as any).role !== "ADMIN" && submission.studentId !== (req.user as any).id) return res.sendStatus(403);
     const exam = await storage.getExam(submission.examId);
     res.json({ ...submission, exam, answers: [] });
   });

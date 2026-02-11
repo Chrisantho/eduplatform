@@ -7,6 +7,7 @@ import {
   submissions,
   answers,
   type User,
+  type InsertUser,
   type Exam,
   type CreateExamRequest,
   type Submission,
@@ -25,6 +26,7 @@ export interface IStorage {
   getExam(id: number): Promise<(Exam & { questions: any[] }) | undefined>;
   createExam(adminId: number, exam: CreateExamRequest): Promise<Exam>;
   deleteExam(id: number): Promise<void>;
+  updateExam(id: number, examData: CreateExamRequest): Promise<Exam | undefined>;
 
   // Submission
   createSubmission(studentId: number, examId: number): Promise<Submission>;
@@ -102,8 +104,59 @@ export class DatabaseStorage implements IStorage {
     return exam;
   }
 
+  async updateExam(id: number, examData: CreateExamRequest): Promise<Exam | undefined> {
+    const existing = await db.select().from(exams).where(eq(exams.id, id));
+    if (existing.length === 0) return undefined;
+
+    const existingSubs = await db.select().from(submissions).where(eq(submissions.examId, id));
+    if (existingSubs.length > 0) {
+      throw new Error("Cannot edit an exam that already has student submissions");
+    }
+
+    const [exam] = await db.update(exams)
+      .set({
+        title: examData.title,
+        description: examData.description,
+        duration: examData.duration,
+        isActive: examData.isActive,
+      })
+      .where(eq(exams.id, id))
+      .returning();
+
+    const oldQuestions = await db.select().from(questions).where(eq(questions.examId, id));
+    for (const oq of oldQuestions) {
+      await db.delete(options).where(eq(options.questionId, oq.id));
+    }
+    await db.delete(questions).where(eq(questions.examId, id));
+
+    for (const q of examData.questions) {
+      const [question] = await db.insert(questions).values({
+        examId: id,
+        text: q.text,
+        type: q.type,
+        points: q.points,
+      }).returning();
+
+      if (q.options && q.options.length > 0) {
+        await db.insert(options).values(
+          q.options.map(o => ({
+            questionId: question.id,
+            text: o.text,
+            isCorrect: o.isCorrect
+          }))
+        );
+      }
+    }
+
+    return exam;
+  }
+
   async deleteExam(id: number): Promise<void> {
-    // Cascade delete manually if not set in DB, but for now simple delete
+    const examQuestions = await db.select().from(questions).where(eq(questions.examId, id));
+    for (const q of examQuestions) {
+      await db.delete(options).where(eq(options.questionId, q.id));
+    }
+    await db.delete(questions).where(eq(questions.examId, id));
     await db.delete(exams).where(eq(exams.id, id));
   }
 

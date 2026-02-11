@@ -98,21 +98,47 @@ export function useSubmitExam(submissionId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: SubmitExamRequest) => {
-      const url = buildUrl(api.exams.submit.path, { id: submissionId });
-      const validated = api.exams.submit.input.parse(data);
+      const url = buildUrl(api.submissions.submit.path, { id: submissionId });
+      const validated = api.submissions.submit.input.parse(data);
       
       const res = await fetch(url, {
-        method: api.exams.submit.method,
+        method: api.submissions.submit.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
         credentials: "include",
       });
 
       if (!res.ok) throw new Error("Failed to submit exam");
-      return api.exams.submit.responses[200].parse(await res.json());
+      return api.submissions.submit.responses[200].parse(await res.json());
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.submissions.list.path] });
+    },
+  });
+}
+
+// Update existing exam
+export function useUpdateExam(examId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateExamRequest) => {
+      const url = buildUrl(api.exams.update.path, { id: examId });
+      const res = await fetch(url, {
+        method: api.exams.update.method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update exam");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.exams.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.exams.get.path, examId] });
     },
   });
 }
