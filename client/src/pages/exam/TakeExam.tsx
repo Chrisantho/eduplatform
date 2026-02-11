@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useExam, useStartExam, useSubmitExam } from "@/hooks/use-exams";
+import { useExam, useStartExam } from "@/hooks/use-exams";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, Timer, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { SubmitExamRequest } from "@shared/routes";
 
@@ -18,19 +19,16 @@ export default function TakeExam() {
   
   const { data: exam, isLoading } = useExam(examId);
   const { mutate: startExam, isPending: starting } = useStartExam();
-  const { mutate: submitExam, isPending: submitting } = useSubmitExam(0); // placeholder ID
   const { toast } = useToast();
 
   const [hasStarted, setHasStarted] = useState(false);
   const [submissionId, setSubmissionId] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0); // in seconds
-  const [answers, setAnswers] = useState<Record<number, number>>({}); // questionId -> optionId
+  const [answers, setAnswers] = useState<Record<number, { selectedOptionId?: number, textAnswer?: string }>>({});
   const [currentQIndex, setCurrentQIndex] = useState(0);
 
-  // Initialize Timer when exam starts
   useEffect(() => {
     if (!hasStarted || timeLeft <= 0) return;
-
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -41,11 +39,9 @@ export default function TakeExam() {
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, [hasStarted, timeLeft]);
 
-  // Handler to start the exam
   const handleStart = () => {
     startExam(examId, {
       onSuccess: (data) => {
@@ -54,45 +50,22 @@ export default function TakeExam() {
         setTimeLeft(exam!.duration * 60);
       },
       onError: (err) => {
-        toast({
-          variant: "destructive",
-          title: "Error starting exam",
-          description: err.message
-        });
+        toast({ variant: "destructive", title: "Error starting exam", description: err.message });
       }
     });
   };
 
-  // Submit Logic
   const handleSubmit = () => {
     if (!submissionId) return;
-    
-    // Check if all answered
     if (Object.keys(answers).length < (exam?.questions.length || 0)) {
        if (!confirm("You haven't answered all questions. Are you sure you want to submit?")) return;
     }
-
     const payload: SubmitExamRequest = {
-      answers: Object.entries(answers).map(([qId, oId]) => ({
+      answers: Object.entries(answers).map(([qId, data]) => ({
         questionId: parseInt(qId),
-        selectedOptionId: oId
+        ...data
       }))
     };
-
-    // We need to use a specific mutation call because the hook was initialized with 0
-    // But hooks shouldn't be conditional. 
-    // Let's fix this by calling a fresh fetch manually or refactoring the hook.
-    // For simplicity here, we'll use the hook's mutate function but we need to override the ID inside the hook?
-    // Actually, the hook defines the mutationFn which USES the id passed to hook.
-    // We should refactor the hook to accept ID in mutate().
-    
-    // REFACTORING HOOK CALL: 
-    // The current useSubmitExam hook takes ID in construction. 
-    // Let's assume we fixed the hook to accept { id, data } in mutate, or we just reconstruct it.
-    // Since I can't change the hook file now easily without re-outputting it, let's use a direct API call or assume I fixed it.
-    // I WILL FIX THE HOOK IN THE NEXT STEP IF NEEDED, BUT FOR NOW LET'S USE THE PROPER PATTERN:
-    // Actually, let's use the fetch directly here to be safe since hook pattern was rigid.
-    
     callSubmitApi(submissionId, payload);
   };
 
@@ -100,9 +73,9 @@ export default function TakeExam() {
     toast({ title: "Time's up!", description: "Submitting your answers automatically..." });
     if (submissionId) {
       const payload: SubmitExamRequest = {
-        answers: Object.entries(answers).map(([qId, oId]) => ({
+        answers: Object.entries(answers).map(([qId, data]) => ({
           questionId: parseInt(qId),
-          selectedOptionId: oId
+          ...data
         }))
       };
       callSubmitApi(submissionId, payload);
@@ -117,8 +90,9 @@ export default function TakeExam() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
+        const updatedSubmission = await res.json();
         toast({ title: "Submitted!", description: "Your exam has been submitted successfully." });
-        setLocation("/student");
+        setLocation(`/student/history/${updatedSubmission.id}`);
       } else {
         throw new Error("Failed");
       }
@@ -127,7 +101,6 @@ export default function TakeExam() {
     }
   };
 
-  // Format time helper
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -142,7 +115,6 @@ export default function TakeExam() {
 
   if (!exam) return <div className="p-8 text-center">Exam not found</div>;
 
-  // LOBBY STATE
   if (!hasStarted) {
     return (
       <div className="container mx-auto max-w-2xl px-4 py-20">
@@ -185,13 +157,11 @@ export default function TakeExam() {
     );
   }
 
-  // EXAM ACTIVE STATE
   const currentQuestion = exam.questions[currentQIndex];
   const progress = ((Object.keys(answers).length) / exam.questions.length) * 100;
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8 min-h-screen flex flex-col">
-      {/* Header Bar */}
       <div className="flex justify-between items-center mb-6 bg-card p-4 rounded-xl border shadow-sm sticky top-4 z-10">
         <div className="flex flex-col">
           <h2 className="font-bold text-lg">{exam.title}</h2>
@@ -213,20 +183,32 @@ export default function TakeExam() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 pt-6">
-            <RadioGroup 
-              value={answers[currentQuestion.id]?.toString()} 
-              onValueChange={(val) => setAnswers(prev => ({ ...prev, [currentQuestion.id]: parseInt(val) }))}
-              className="space-y-4"
-            >
-              {currentQuestion.options.map((opt) => (
-                <div key={opt.id} className={`flex items-center space-x-3 border p-4 rounded-lg transition-all ${answers[currentQuestion.id] === opt.id ? 'border-primary bg-primary/5 shadow-inner' : 'hover:bg-muted/50'}`}>
-                  <RadioGroupItem value={opt.id.toString()} id={opt.id.toString()} />
-                  <Label htmlFor={opt.id.toString()} className="flex-1 cursor-pointer font-normal text-base">
-                    {opt.text}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+            {currentQuestion.type === "MCQ" ? (
+              <RadioGroup 
+                value={answers[currentQuestion.id]?.selectedOptionId?.toString()} 
+                onValueChange={(val) => setAnswers(prev => ({ ...prev, [currentQuestion.id]: { selectedOptionId: parseInt(val) } }))}
+                className="space-y-4"
+              >
+                {currentQuestion.options.map((opt) => (
+                  <div key={opt.id} className={`flex items-center space-x-3 border p-4 rounded-lg transition-all ${answers[currentQuestion.id]?.selectedOptionId === opt.id ? 'border-primary bg-primary/5 shadow-inner' : 'hover:bg-muted/50'}`}>
+                    <RadioGroupItem value={opt.id.toString()} id={opt.id.toString()} />
+                    <Label htmlFor={opt.id.toString()} className="flex-1 cursor-pointer font-normal text-base">
+                      {opt.text}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            ) : (
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Your Explanation</Label>
+                <Textarea 
+                  value={answers[currentQuestion.id]?.textAnswer || ""}
+                  onChange={(e) => setAnswers(prev => ({ ...prev, [currentQuestion.id]: { textAnswer: e.target.value } }))}
+                  placeholder="Type your explanation here..."
+                  className="min-h-[200px] text-lg leading-relaxed focus-visible:ring-primary"
+                />
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-between border-t p-6 bg-muted/10">
             <Button 
@@ -236,7 +218,6 @@ export default function TakeExam() {
             >
               Previous
             </Button>
-
             {currentQIndex === exam.questions.length - 1 ? (
               <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
                 Submit Exam
@@ -250,7 +231,6 @@ export default function TakeExam() {
         </Card>
       </div>
 
-      {/* Question Navigator */}
       <div className="mt-8 flex gap-2 flex-wrap justify-center">
         {exam.questions.map((q, idx) => (
           <button

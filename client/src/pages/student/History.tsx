@@ -30,7 +30,16 @@ export default function ExamHistory() {
     );
   }
 
-  const isPassed = (submission.score || 0) >= 70;
+  const getGrade = (score: number) => {
+    if (score >= 90) return { grade: "A+", label: "EXCELLENT", color: "text-green-600" };
+    if (score >= 80) return { grade: "A", label: "VERY GOOD", color: "text-green-600" };
+    if (score >= 70) return { grade: "B", label: "GOOD", color: "text-blue-600" };
+    if (score >= 60) return { grade: "C", label: "FAIR", color: "text-yellow-600" };
+    return { grade: "F", label: "FAILED", color: "text-destructive" };
+  };
+
+  const gradeInfo = getGrade(submission.score || 0);
+  const isPassed = (submission.score || 0) >= 60;
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -47,19 +56,22 @@ export default function ExamHistory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className={`md:col-span-1 border-2 ${isPassed ? "border-green-500/20" : "border-yellow-500/20"}`}>
+        <Card className={`md:col-span-1 border-2 ${isPassed ? "border-green-500/20" : "border-destructive/20"}`}>
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-sm font-medium uppercase tracking-wider opacity-60">Your Score</CardTitle>
+            <CardTitle className="text-sm font-medium uppercase tracking-wider opacity-60">Result Overview</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
-            <div className={`text-6xl font-black ${isPassed ? "text-green-600" : "text-yellow-600"}`}>
+            <div className={`text-6xl font-black ${gradeInfo.color}`}>
               {submission.score}%
             </div>
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${
-              isPassed ? "bg-green-100 text-green-700 dark:bg-green-900/30" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30"
-            }`}>
-              {isPassed ? <Award className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-              {isPassed ? "PASSED" : "NEEDS IMPROVEMENT"}
+            <div className="flex flex-col gap-1">
+              <span className={`text-2xl font-bold ${gradeInfo.color}`}>Grade: {gradeInfo.grade}</span>
+              <div className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-bold ${
+                isPassed ? "bg-green-100 text-green-700 dark:bg-green-900/30" : "bg-destructive/10 text-destructive"
+              }`}>
+                {isPassed ? <Award className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                {gradeInfo.label}
+              </div>
             </div>
           </CardContent>
         </Card>

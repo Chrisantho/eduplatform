@@ -118,17 +118,37 @@ export async function registerRoutes(
       const input = submitExamRequestSchema.parse(req.body);
       const exam = await storage.getExam(submission.examId);
       let score = 0;
+      let totalPossiblePoints = 0;
+
       if (exam) {
-        for (const ans of input.answers) {
-          const question = exam.questions.find(q => q.id === ans.questionId);
-          if (question && question.type === "MCQ" && ans.selectedOptionId) {
-            const selectedOpt = question.options.find((o: any) => o.id === ans.selectedOptionId);
-            if (selectedOpt && selectedOpt.isCorrect) score += question.points || 1;
+        for (const question of exam.questions) {
+          totalPossiblePoints += question.points || 0;
+          const studentAnswer = input.answers.find(a => a.questionId === question.id);
+          
+          if (!studentAnswer) continue;
+
+          if (question.type === "MCQ" && studentAnswer.selectedOptionId) {
+            const selectedOpt = question.options.find((o: any) => o.id === studentAnswer.selectedOptionId);
+            if (selectedOpt && selectedOpt.isCorrect) {
+              score += question.points || 0;
+            }
+          } else if (question.type === "SHORT_ANSWER" && studentAnswer.textAnswer) {
+            // Auto-grading short answer: Simple match or keyword check (could be improved)
+            // For now, let's treat it as needing manual review or simple existence check
+            // If the user wants specific grading logic, we'd need a reference answer.
+            // Placeholder: give points if they answered anything for now.
+            score += question.points || 0; 
           }
         }
       }
+
+      // Calculate percentage
+      const finalPercentage = totalPossiblePoints > 0 
+        ? Math.round((score / totalPossiblePoints) * 100) 
+        : 0;
+
       await storage.saveAnswers(submissionId, input.answers);
-      const updated = await storage.updateSubmissionStatus(submissionId, "COMPLETED", score);
+      const updated = await storage.updateSubmissionStatus(submissionId, "COMPLETED", finalPercentage);
       res.json(updated);
     } catch (e) {
       res.status(400).json({ message: "Invalid submission data" });

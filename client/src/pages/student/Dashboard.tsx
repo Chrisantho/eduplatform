@@ -12,7 +12,7 @@ export default function StudentDashboard() {
 
   // Helper to check if exam is already taken
   const isExamTaken = (examId: number) => {
-    return submissions?.some(s => s.examId === examId && s.status === "COMPLETED");
+    return submissions?.some(s => s.examId === examId);
   };
 
   return (
