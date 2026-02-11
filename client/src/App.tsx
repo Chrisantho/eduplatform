@@ -52,6 +52,10 @@ function Router() {
             <ProtectedRoute component={StudentDashboard} allowedRoles={["STUDENT"]} />
           </Route>
           
+          <Route path="/student/history">
+            <ProtectedRoute component={ExamHistory} allowedRoles={["STUDENT"]} />
+          </Route>
+          
           <Route path="/student/history/:id">
             <ProtectedRoute component={ExamHistory} allowedRoles={["STUDENT"]} />
           </Route>

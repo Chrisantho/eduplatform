@@ -1,14 +1,15 @@
 import { useSubmission } from "@/hooks/use-submissions";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle2, XCircle, Award, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { Loader2, CheckCircle2, Award, Calendar, Clock, ArrowLeft, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
 export default function ExamHistory() {
-  const [, params] = useRoute("/student/history/:id");
-  const { data: submission, isLoading } = useSubmission(Number(params?.id));
+  const [match, params] = useRoute("/student/history/:id");
+  const submissionId = params?.id ? parseInt(params.id) : 0;
+  const { data: submission, isLoading } = useSubmission(submissionId);
 
   if (isLoading) {
     return (

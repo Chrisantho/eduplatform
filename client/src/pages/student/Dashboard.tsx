@@ -107,7 +107,7 @@ export default function StudentDashboard() {
                         </span>
                       </div>
                       <Link href={`/student/history/${sub.id}`}>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" data-testid={`button-view-details-${sub.id}`}>
                           View Details <ArrowRight className="ml-2 h-3 w-3" />
                         </Button>
                       </Link>

@@ -7,7 +7,6 @@ import {
   submissions,
   answers,
   type User,
-  type InsertUser,
   type Exam,
   type CreateExamRequest,
   type Submission,
@@ -48,7 +47,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: any): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
@@ -124,7 +123,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserSubmissions(userId: number): Promise<(Submission & { exam: Exam })[]> {
-    const subs = await db.select().from(submissions).where(eq(submissions.studentId, userId));
+    const user = await this.getUser(userId);
+    const query = db.select().from(submissions);
+    const subs = user?.role === "ADMIN" 
+      ? await query.orderBy(submissions.startTime)
+      : await query.where(eq(submissions.studentId, userId)).orderBy(submissions.startTime);
+    
     const result = [];
     for (const sub of subs) {
       const [exam] = await db.select().from(exams).where(eq(exams.id, sub.examId));

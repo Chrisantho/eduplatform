@@ -343,7 +343,7 @@ function CreateExamDialog() {
                         />
                       </div>
                     ))}
-                    <Button variant="link" size="sm" onClick={() => addOption(idx)} className="h-auto p-0 text-xs">
+                    <Button variant="ghost" size="sm" onClick={() => addOption(idx)} className="h-auto p-0 text-xs">
                       + Add Option
                     </Button>
                   </div>
