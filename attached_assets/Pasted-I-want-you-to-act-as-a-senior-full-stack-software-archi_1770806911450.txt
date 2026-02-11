@@ -1,0 +1,178 @@
+I want you to act as a senior full-stack software architect and engineer.
+
+Build a complete production-ready Online Examination System with the following requirements:
+
+=========================
+TECH STACK
+=========================
+Frontend:
+- React (with Vite or Next.js)
+- React Router
+- Axios
+- Context API or Redux Toolkit
+- TailwindCSS (for styling)
+- Dark/Light mode toggle with persistent theme
+
+Backend:
+- Java Spring Boot
+- RESTful API
+- JWT Authentication
+- Role-based Authorization
+- WebSocket support (for real-time exam timer and submission)
+
+Database:
+- PostgreSQL
+
+DevOps:
+- Docker (Dockerfiles for frontend, backend, database)
+- Docker Compose for orchestration
+- Ansible playbook for deployment automation
+
+=========================
+CORE FEATURES
+=========================
+
+1. Authentication System
+- Login and Signup pages
+- Store users in PostgreSQL
+- Passwords must be hashed using BCrypt
+- JWT-based authentication
+- Role field in User entity: ADMIN or STUDENT
+- After login:
+    - ADMIN → Redirect to Admin Dashboard
+    - STUDENT → Redirect to Student Dashboard
+- Protect routes based on role
+
+2. User Entity (Database)
+Fields:
+- id (UUID)
+- fullName
+- email (unique)
+- password (hashed)
+- role (ADMIN or STUDENT)
+- createdAt
+
+3. Admin Dashboard
+Admin can:
+- Create exams
+- Add questions (MCQ and short answer)
+- Set exam duration
+- Assign exams to students
+- View all students
+- View results
+- Delete or edit exams
+- Monitor active exam sessions (real-time)
+- View analytics (average score, pass rate)
+
+4. Student Dashboard
+Students can:
+- View assigned exams
+- Start exam (real-time countdown)
+- Submit answers
+- View results after grading
+- Search for past results
+- See score breakdown
+
+5. Exam System
+Entities:
+- Exam
+- Question
+- Option (for MCQ)
+- Submission
+- Answer
+
+Features:
+- Timed exams
+- Auto-submit when timer ends
+- Real-time countdown using WebSockets
+- MCQ auto-grading
+- Short answers manually graded by Admin
+- Store submission history
+- Prevent multiple attempts (unless configured)
+
+6. Real-Time Features
+- Use WebSockets (Spring Boot + STOMP)
+- Live countdown timer
+- Immediate submission status update
+- Prevent cheating via timer sync
+
+7. Dark and Light Mode
+- Toggle button in navbar
+- Persist selection in localStorage
+- Tailwind dark mode configuration
+- Apply theme globally
+
+8. API Design
+Follow REST best practices:
+- /api/auth/register
+- /api/auth/login
+- /api/admin/exams
+- /api/student/exams
+- /api/submissions
+- etc.
+
+Return proper HTTP status codes.
+
+9. Security
+- JWT authentication filter
+- Role-based method security
+- CORS configuration
+- Input validation
+- Exception handling middleware
+
+10. Docker Setup
+Create:
+- Dockerfile for frontend
+- Dockerfile for backend
+- docker-compose.yml including:
+    - frontend
+    - backend
+    - postgres
+
+Ensure services communicate correctly.
+
+11. Ansible
+Create:
+- Inventory file
+- Playbook that:
+    - Installs Docker
+    - Pulls project
+    - Runs docker-compose
+    - Sets environment variables
+
+=========================
+PROJECT STRUCTURE
+=========================
+
+Provide full folder structure for:
+- frontend
+- backend
+- database
+- docker
+- ansible
+
+=========================
+WHAT I EXPECT FROM YOU
+=========================
+
+1. Step-by-step implementation
+2. Backend first (entities, repositories, services, controllers)
+3. Then frontend (pages, routing, dashboards)
+4. API integration
+5. WebSocket implementation
+6. Docker configuration
+7. Ansible configuration
+8. Environment variables configuration
+9. Instructions to run locally
+10. Instructions to deploy
+
+Make sure:
+- Everything connects properly
+- All API calls match frontend usage
+- Authentication works correctly
+- Role-based redirection works
+- Real-time exam submission works
+- Code is clean and production-ready
+- Use best practices
+
+Generate the complete working system.
