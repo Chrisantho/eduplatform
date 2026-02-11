@@ -324,14 +324,40 @@ function CreateExamDialog() {
                     placeholder="Enter question text..." 
                   />
                   
-                  <div className="space-y-4">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Short Answer Response</Label>
-                    <Textarea 
-                      disabled 
-                      placeholder="Students will type their answer here..." 
-                      className="min-h-[100px] bg-muted/50"
-                    />
-                  </div>
+                  {q.type === "MCQ" ? (
+                    <div className="space-y-2 pl-4 border-l">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Options</Label>
+                      {q.options.map((opt: any, oIdx: number) => (
+                        <div key={oIdx} className="flex gap-2 items-center">
+                          <input 
+                            type="radio" 
+                            name={`q-${idx}`}
+                            checked={opt.isCorrect} 
+                            onChange={() => updateOption(idx, oIdx, 'isCorrect', true)}
+                            className="h-4 w-4 text-primary focus:ring-primary"
+                          />
+                          <Input 
+                            value={opt.text} 
+                            onChange={e => updateOption(idx, oIdx, 'text', e.target.value)} 
+                            placeholder={`Option ${oIdx + 1}`}
+                            className="h-9"
+                          />
+                        </div>
+                      ))}
+                      <Button variant="ghost" size="sm" onClick={() => addOption(idx)} className="h-auto p-0 text-xs">
+                        + Add Option
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wider">Short Answer Response</Label>
+                      <Textarea 
+                        disabled 
+                        placeholder="Students will type their answer here..." 
+                        className="min-h-[100px] bg-muted/50"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
