@@ -32,7 +32,8 @@ export function useLogin() {
         if (res.status === 401) {
           throw new Error("Invalid username or password");
         }
-        throw new Error("Login failed");
+        const errorText = await res.text().catch(() => "");
+        throw new Error(`Login failed (${res.status}): ${errorText || "Please try again"}`);
       }
 
       return (await res.json()) as User;
