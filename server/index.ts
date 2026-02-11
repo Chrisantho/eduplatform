@@ -62,10 +62,29 @@ function startFrontend(): ChildProcess {
   return proc;
 }
 
+async function waitForBackend(maxWait = 30000): Promise<void> {
+  const start = Date.now();
+  log("Waiting for backend to be ready...");
+  while (Date.now() - start < maxWait) {
+    try {
+      const res = await fetch("http://localhost:8080/api/user");
+      if (res.status > 0) {
+        log("Backend is ready!");
+        return;
+      }
+    } catch {
+      // not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  log("WARNING: Backend did not respond within timeout, starting frontend anyway");
+}
+
 async function main() {
   await buildBackendIfNeeded();
 
   const backend = startBackend();
+  await waitForBackend();
   const frontend = startFrontend();
 
   const cleanup = () => {

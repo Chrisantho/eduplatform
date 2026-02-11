@@ -6,6 +6,8 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 
 import javax.sql.DataSource;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class DataSourceConfig {
@@ -46,9 +48,9 @@ public class DataSourceConfig {
             String userInfo = uri.getUserInfo();
             if (userInfo != null) {
                 String[] parts = userInfo.split(":", 2);
-                username = parts[0];
+                username = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
                 if (parts.length > 1) {
-                    password = parts[1];
+                    password = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
                 }
             }
 
