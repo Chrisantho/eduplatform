@@ -10,8 +10,11 @@ import { Loader2 } from "lucide-react";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
 import StudentDashboard from "@/pages/student/Dashboard";
 import ExamHistory from "@/pages/student/History";
+import NotificationsPage from "@/pages/student/Notifications";
+import StudentProfile from "@/pages/student/Profile";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import TakeExam from "@/pages/exam/TakeExam";
 import NotFound from "@/pages/not-found";
@@ -47,13 +50,18 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
+          <Route path="/forgot-password" component={ForgotPassword} />
           
           <Route path="/student">
             <ProtectedRoute component={StudentDashboard} allowedRoles={["STUDENT"]} />
           </Route>
           
-          <Route path="/student/history">
-            <ProtectedRoute component={ExamHistory} allowedRoles={["STUDENT"]} />
+          <Route path="/student/notifications">
+            <ProtectedRoute component={NotificationsPage} allowedRoles={["STUDENT"]} />
+          </Route>
+
+          <Route path="/student/profile">
+            <ProtectedRoute component={StudentProfile} allowedRoles={["STUDENT"]} />
           </Route>
           
           <Route path="/student/history/:id">

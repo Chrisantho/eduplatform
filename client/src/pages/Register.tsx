@@ -13,6 +13,7 @@ export default function Register() {
   const [formData, setFormData] = useState({
     fullName: "",
     username: "",
+    email: "",
     password: "",
     role: "STUDENT" as "STUDENT" | "ADMIN",
   });
@@ -71,6 +72,17 @@ export default function Register() {
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email (for password recovery)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  data-testid="input-register-email"
                 />
               </div>
               <div className="space-y-2">

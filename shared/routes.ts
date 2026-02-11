@@ -7,7 +7,8 @@ import {
   createExamRequestSchema,
   submitExamRequestSchema,
   questions,
-  options
+  options,
+  notifications
 } from './schema';
 
 // === SHARED ERROR SCHEMAS ===
@@ -63,6 +64,54 @@ export const api = {
       path: '/api/user' as const,
       responses: {
         200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    forgotPassword: {
+      method: 'POST' as const,
+      path: '/api/forgot-password' as const,
+      input: z.object({ email: z.string().email() }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+    verifyResetCode: {
+      method: 'POST' as const,
+      path: '/api/verify-reset-code' as const,
+      input: z.object({ email: z.string().email(), code: z.string() }),
+      responses: {
+        200: z.object({ message: z.string(), token: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+    resetPassword: {
+      method: 'POST' as const,
+      path: '/api/reset-password' as const,
+      input: z.object({ token: z.string(), newPassword: z.string().min(6) }),
+      responses: {
+        200: z.object({ message: z.string() }),
+        400: errorSchemas.validation,
+      },
+    },
+    updateProfile: {
+      method: 'PUT' as const,
+      path: '/api/user/profile' as const,
+      input: z.object({
+        fullName: z.string().optional(),
+        email: z.string().email().optional().or(z.literal("")),
+        bio: z.string().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    uploadProfilePic: {
+      method: 'POST' as const,
+      path: '/api/user/profile-pic' as const,
+      responses: {
+        200: z.object({ url: z.string() }),
         401: errorSchemas.unauthorized,
       },
     },
@@ -146,7 +195,37 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-  }
+  },
+  notifications: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/notifications' as const,
+      responses: {
+        200: z.array(z.custom<typeof notifications.$inferSelect>()),
+      },
+    },
+    markRead: {
+      method: 'PUT' as const,
+      path: '/api/notifications/:id/read' as const,
+      responses: {
+        200: z.custom<typeof notifications.$inferSelect>(),
+      },
+    },
+    markAllRead: {
+      method: 'PUT' as const,
+      path: '/api/notifications/read-all' as const,
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
+    unreadCount: {
+      method: 'GET' as const,
+      path: '/api/notifications/unread-count' as const,
+      responses: {
+        200: z.object({ count: z.number() }),
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {

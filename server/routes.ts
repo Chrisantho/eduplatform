@@ -7,12 +7,41 @@ import { api } from "@shared/routes";
 import { createExamRequestSchema, submitExamRequestSchema } from "@shared/schema";
 import { z } from "zod";
 import passport from "passport";
+import { randomBytes } from "crypto";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadDir,
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `profile-${Date.now()}-${randomBytes(4).toString("hex")}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, allowed.includes(ext));
+  },
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  app.use("/uploads", (await import("express")).default.static(uploadDir));
+
+  // === AUTH ROUTES ===
 
   app.post(api.auth.register.path, async (req, res, next) => {
     try {
@@ -25,6 +54,14 @@ export async function registerRoutes(
         ...req.body,
         password: hashedPassword,
       });
+
+      await storage.createNotification({
+        userId: user.id,
+        title: "Welcome to EduPlatform!",
+        message: `Hi ${user.fullName}, welcome to our learning platform! Start by browsing available exams from your dashboard.`,
+        type: "WELCOME",
+      });
+
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(user);
@@ -49,6 +86,119 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
+
+  // === PROFILE ROUTES ===
+
+  app.put(api.auth.updateProfile.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const profileSchema = z.object({
+        fullName: z.string().min(1).optional(),
+        email: z.string().email().optional().or(z.literal("")),
+        bio: z.string().max(500).optional(),
+      });
+      const data = profileSchema.parse(req.body);
+      const user = await storage.updateUserProfile((req.user as any).id, data);
+      res.json(user);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        res.status(400).json({ message: "Validation error", errors: e.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update profile" });
+      }
+    }
+  });
+
+  app.post(api.auth.uploadProfilePic.path, upload.single("profilePic"), async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const url = `/uploads/${req.file.filename}`;
+    await storage.updateUserProfile((req.user as any).id, { profilePicUrl: url });
+    res.json({ url });
+  });
+
+  // === FORGOT PASSWORD ROUTES ===
+
+  app.post(api.auth.forgotPassword.path, async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ message: "Email is required" });
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.json({ message: "If an account with that email exists, a reset code has been sent" });
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      await storage.createPasswordReset(user.id, code, expiresAt);
+
+      try {
+        const { Resend } = await import("resend");
+        const resendKey = process.env.RESEND_API_KEY;
+        if (resendKey) {
+          const resend = new Resend(resendKey);
+          await resend.emails.send({
+            from: "EduPlatform <onboarding@resend.dev>",
+            to: email,
+            subject: "Password Reset Code - EduPlatform",
+            html: `<h2>Password Reset</h2><p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 15 minutes.</p>`,
+          });
+        }
+      } catch (emailErr) {
+        console.log("Email sending not configured, code stored in database. Code:", code);
+      }
+
+      res.json({ message: "If an account with that email exists, a reset code has been sent" });
+    } catch (e) {
+      res.status(500).json({ message: "Failed to process password reset" });
+    }
+  });
+
+  app.post(api.auth.verifyResetCode.path, async (req, res) => {
+    try {
+      const { email, code } = req.body;
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(400).json({ message: "Invalid email" });
+
+      const reset = await storage.getPasswordReset(user.id, code);
+      if (!reset) return res.status(400).json({ message: "Invalid or expired code" });
+      if (new Date() > reset.expiresAt) return res.status(400).json({ message: "Code has expired" });
+
+      const token = randomBytes(32).toString("hex");
+      await storage.markPasswordResetUsed(reset.id);
+      await storage.createPasswordReset(user.id, token, new Date(Date.now() + 10 * 60 * 1000));
+
+      res.json({ message: "Code verified successfully", token });
+    } catch (e) {
+      res.status(500).json({ message: "Verification failed" });
+    }
+  });
+
+  app.post(api.auth.resetPassword.path, async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      const reset = await storage.getPasswordResetByToken(token);
+      
+      if (!reset || new Date() > reset.expiresAt) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserPassword(reset.userId, hashedPassword);
+      await storage.markPasswordResetUsed(reset.id);
+
+      res.json({ message: "Password reset successful. You can now log in with your new password." });
+    } catch (e) {
+      res.status(500).json({ message: "Password reset failed" });
+    }
+  });
+
+  // === EXAM ROUTES ===
 
   app.get(api.exams.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -75,6 +225,13 @@ export async function registerRoutes(
     try {
       const input = createExamRequestSchema.parse(req.body);
       const exam = await storage.createExam((req.user as any).id, input);
+
+      await storage.createNotificationsForAllStudents(
+        "New Exam Available",
+        `A new exam "${exam.title}" has been published. Check your dashboard to take it!`,
+        "NEW_EXAM"
+      );
+
       res.status(201).json(exam);
     } catch (e) {
       if (e instanceof z.ZodError) {
@@ -119,6 +276,8 @@ export async function registerRoutes(
     res.status(201).json(submission);
   });
 
+  // === SUBMISSION ROUTES ===
+
   app.get(api.submissions.list.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const subs = await storage.getUserSubmissions((req.user as any).id);
@@ -151,16 +310,11 @@ export async function registerRoutes(
               score += question.points || 0;
             }
           } else if (question.type === "SHORT_ANSWER" && studentAnswer.textAnswer) {
-            // Auto-grading short answer: Simple match or keyword check (could be improved)
-            // For now, let's treat it as needing manual review or simple existence check
-            // If the user wants specific grading logic, we'd need a reference answer.
-            // Placeholder: give points if they answered anything for now.
             score += question.points || 0; 
           }
         }
       }
 
-      // Calculate percentage
       const finalPercentage = totalPossiblePoints > 0 
         ? Math.round((score / totalPossiblePoints) * 100) 
         : 0;
@@ -181,6 +335,34 @@ export async function registerRoutes(
     const exam = await storage.getExam(submission.examId);
     res.json({ ...submission, exam, answers: [] });
   });
+
+  // === NOTIFICATION ROUTES ===
+
+  app.get(api.notifications.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const notifs = await storage.getUserNotifications((req.user as any).id);
+    res.json(notifs);
+  });
+
+  app.get(api.notifications.unreadCount.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const count = await storage.getUnreadNotificationCount((req.user as any).id);
+    res.json({ count });
+  });
+
+  app.put(api.notifications.markAllRead.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    await storage.markAllNotificationsRead((req.user as any).id);
+    res.json({ message: "All notifications marked as read" });
+  });
+
+  app.put(api.notifications.markRead.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const notification = await storage.markNotificationRead(Number(req.params.id));
+    res.json(notification);
+  });
+
+  // === WS + SEED ===
 
   new WebSocketServer({ server: httpServer, path: '/ws' });
 

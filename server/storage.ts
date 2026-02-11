@@ -6,20 +6,27 @@ import {
   options,
   submissions,
   answers,
+  notifications,
+  passwordResets,
   type User,
   type InsertUser,
   type Exam,
   type CreateExamRequest,
   type Submission,
-  type Answer
+  type Answer,
+  type Notification,
+  type InsertNotification,
+  type PasswordReset
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserProfile(id: number, data: { fullName?: string; email?: string; bio?: string; profilePicUrl?: string }): Promise<User>;
 
   // Exam
   getExams(): Promise<Exam[]>;
@@ -36,6 +43,21 @@ export interface IStorage {
   
   // Answers
   saveAnswers(submissionId: number, answerData: { questionId: number, selectedOptionId?: number, textAnswer?: string }[]): Promise<void>;
+
+  // Notifications
+  createNotification(data: InsertNotification): Promise<Notification>;
+  createNotificationsForAllStudents(title: string, message: string, type: "WELCOME" | "NEW_EXAM" | "RESULT" | "SYSTEM"): Promise<void>;
+  getUserNotifications(userId: number): Promise<Notification[]>;
+  markNotificationRead(id: number): Promise<Notification>;
+  markAllNotificationsRead(userId: number): Promise<void>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
+
+  // Password Reset
+  createPasswordReset(userId: number, code: string, expiresAt: Date): Promise<PasswordReset>;
+  getPasswordReset(userId: number, code: string): Promise<PasswordReset | undefined>;
+  getPasswordResetByToken(token: string): Promise<PasswordReset | undefined>;
+  markPasswordResetUsed(id: number): Promise<void>;
+  updateUserPassword(userId: number, hashedPassword: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -49,8 +71,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async createUser(insertUser: any): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUserProfile(id: number, data: { fullName?: string; email?: string; bio?: string; profilePicUrl?: string }): Promise<User> {
+    const updateData: any = {};
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.email !== undefined) updateData.email = data.email || null;
+    if (data.bio !== undefined) updateData.bio = data.bio || null;
+    if (data.profilePicUrl !== undefined) updateData.profilePicUrl = data.profilePicUrl;
+    const [user] = await db.update(users).set(updateData).where(eq(users.id, id)).returning();
     return user;
   }
 
@@ -201,9 +238,6 @@ export class DatabaseStorage implements IStorage {
   async saveAnswers(submissionId: number, answerData: { questionId: number, selectedOptionId?: number, textAnswer?: string }[]): Promise<void> {
     if (answerData.length === 0) return;
     
-    // In a real app, we would calculate 'isCorrect' and 'pointsAwarded' here by fetching the questions/options
-    // For MVP, we'll store them raw. Grading logic will be in the route handler or service.
-    
     await db.insert(answers).values(
       answerData.map(a => ({
         submissionId,
@@ -212,6 +246,86 @@ export class DatabaseStorage implements IStorage {
         textAnswer: a.textAnswer,
       }))
     );
+  }
+
+  // === Notifications ===
+
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const [notification] = await db.insert(notifications).values(data).returning();
+    return notification;
+  }
+
+  async createNotificationsForAllStudents(title: string, message: string, type: "WELCOME" | "NEW_EXAM" | "RESULT" | "SYSTEM"): Promise<void> {
+    const allStudents = await db.select().from(users).where(eq(users.role, "STUDENT"));
+    for (const student of allStudents) {
+      await db.insert(notifications).values({
+        userId: student.id,
+        title,
+        message,
+        type,
+      });
+    }
+  }
+
+  async getUserNotifications(userId: number): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationRead(id: number): Promise<Notification> {
+    const [notification] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id))
+      .returning();
+    return notification;
+  }
+
+  async markAllNotificationsRead(userId: number): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const unread = await db.select().from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return unread.length;
+  }
+
+  // === Password Reset ===
+
+  async createPasswordReset(userId: number, code: string, expiresAt: Date): Promise<PasswordReset> {
+    const [reset] = await db.insert(passwordResets).values({
+      userId,
+      code,
+      expiresAt,
+    }).returning();
+    return reset;
+  }
+
+  async getPasswordReset(userId: number, code: string): Promise<PasswordReset | undefined> {
+    const [reset] = await db.select().from(passwordResets)
+      .where(and(
+        eq(passwordResets.userId, userId),
+        eq(passwordResets.code, code),
+        eq(passwordResets.used, false)
+      ));
+    return reset;
+  }
+
+  async getPasswordResetByToken(token: string): Promise<PasswordReset | undefined> {
+    const [reset] = await db.select().from(passwordResets)
+      .where(and(eq(passwordResets.code, token), eq(passwordResets.used, false)));
+    return reset;
+  }
+
+  async markPasswordResetUsed(id: number): Promise<void> {
+    await db.update(passwordResets).set({ used: true }).where(eq(passwordResets.id, id));
+  }
+
+  async updateUserPassword(userId: number, hashedPassword: string): Promise<void> {
+    await db.update(users).set({ password: hashedPassword }).where(eq(users.id, userId));
   }
 }
 

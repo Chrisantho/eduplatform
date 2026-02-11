@@ -7,10 +7,13 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(), // email
+  username: text("username").notNull().unique(), // login username
+  email: text("email"), // for password reset
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   role: text("role", { enum: ["ADMIN", "STUDENT"] }).notNull().default("STUDENT"),
+  bio: text("bio"),
+  profilePicUrl: text("profile_pic_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -59,11 +62,31 @@ export const answers = pgTable("answers", {
   pointsAwarded: integer("points_awarded").default(0),
 });
 
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type", { enum: ["WELCOME", "NEW_EXAM", "RESULT", "SYSTEM"] }).notNull().default("SYSTEM"),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const passwordResets = pgTable("password_resets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  code: text("code").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // === RELATIONS ===
 
 export const usersRelations = relations(users, ({ many }) => ({
   createdExams: many(exams),
   submissions: many(submissions),
+  notifications: many(notifications),
 }));
 
 export const examsRelations = relations(exams, ({ one, many }) => ({
@@ -113,6 +136,20 @@ export const answersRelations = relations(answers, ({ one }) => ({
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const passwordResetsRelations = relations(passwordResets, ({ one }) => ({
+  user: one(users, {
+    fields: [passwordResets.userId],
+    references: [users.id],
+  }),
+}));
+
 // === BASE SCHEMAS ===
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -121,6 +158,7 @@ export const insertQuestionSchema = createInsertSchema(questions).omit({ id: tru
 export const insertOptionSchema = createInsertSchema(options).omit({ id: true, questionId: true });
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, startTime: true, endTime: true, score: true, status: true });
 export const insertAnswerSchema = createInsertSchema(answers).omit({ id: true, isCorrect: true, pointsAwarded: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
 
 // Shared schemas for routes
 export const submitExamRequestSchema = z.object({
@@ -148,11 +186,14 @@ export type Question = typeof questions.$inferSelect;
 export type Option = typeof options.$inferSelect;
 export type Submission = typeof submissions.$inferSelect;
 export type Answer = typeof answers.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type PasswordReset = typeof passwordResets.$inferSelect;
 
 export type QuestionWithOptions = Question & { options: Option[] };
 export type ExamWithQuestions = Exam & { questions: QuestionWithOptions[] };
 export type SubmissionWithDetails = Submission & { exam: Exam };
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type CreateExamRequest = z.infer<typeof createExamRequestSchema>;
 export type SubmitExamRequest = z.infer<typeof submitExamRequestSchema>;
