@@ -10,6 +10,7 @@ export function useSubmissions() {
       if (!res.ok) throw new Error("Failed to fetch submissions");
       return api.submissions.list.responses[200].parse(await res.json());
     },
+    staleTime: 0,
   });
 }
 

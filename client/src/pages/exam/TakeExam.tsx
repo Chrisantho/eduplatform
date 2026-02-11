@@ -10,7 +10,8 @@ import { Loader2, Timer, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { SubmitExamRequest } from "@shared/routes";
+import { SubmitExamRequest, api } from "@shared/routes";
+import { queryClient } from "@/lib/queryClient";
 
 export default function TakeExam() {
   const [, params] = useRoute("/exam/:id");
@@ -91,6 +92,8 @@ export default function TakeExam() {
       });
       if (res.ok) {
         const updatedSubmission = await res.json();
+        queryClient.invalidateQueries({ queryKey: [api.submissions.list.path] });
+        queryClient.invalidateQueries({ queryKey: [api.exams.list.path] });
         toast({ title: "Submitted!", description: "Your exam has been submitted successfully." });
         setLocation(`/student/history/${updatedSubmission.id}`);
       } else {
