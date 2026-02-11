@@ -31,16 +31,21 @@ async function getCredentials(): Promise<{ apiKey: string; email: string }> {
   return { apiKey: connectionSettings.settings.api_key, email: connectionSettings.settings.from_email };
 }
 
-export async function sendEmail(to: string, subject: string, htmlContent: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, htmlContent: string, textContent?: string): Promise<void> {
   const { apiKey, email: fromEmail } = await getCredentials();
   sgMail.setApiKey(apiKey);
 
-  await sgMail.send({
+  const msg: any = {
     to,
-    from: fromEmail,
+    from: { email: fromEmail, name: "EduPlatform" },
     subject,
     html: htmlContent,
-  });
+  };
+  if (textContent) {
+    msg.text = textContent;
+  }
+
+  await sgMail.send(msg);
 }
 
 export function startEmailService(port: number, logFn: (msg: string, src?: string) => void): http.Server {
@@ -50,13 +55,13 @@ export function startEmailService(port: number, logFn: (msg: string, src?: strin
       req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
       req.on("end", async () => {
         try {
-          const { to, subject, html } = JSON.parse(body);
+          const { to, subject, html, text } = JSON.parse(body);
           if (!to || !subject || !html) {
             res.writeHead(400, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ error: "Missing required fields: to, subject, html" }));
             return;
           }
-          await sendEmail(to, subject, html);
+          await sendEmail(to, subject, html, text);
           logFn(`Email sent to ${to}: ${subject}`, "email");
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ success: true }));

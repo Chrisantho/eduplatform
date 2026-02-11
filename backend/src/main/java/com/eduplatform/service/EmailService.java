@@ -38,11 +38,19 @@ public class EmailService {
                 + "</div>"
                 + "</div>";
 
-        String subject = "EduPlatform - Password Reset Code";
+        String subject = "Your EduPlatform Password Reset Code";
+
+        String text = "Hi " + userName + ",\n\n"
+                + "You requested a password reset for your EduPlatform account.\n\n"
+                + "Your verification code is: " + code + "\n\n"
+                + "This code expires in 15 minutes.\n\n"
+                + "If you didn't request this, you can safely ignore this email.\n\n"
+                + "- EduPlatform Team";
 
         try {
             String jsonBody = "{\"to\":\"" + escapeJson(toEmail) + "\","
                     + "\"subject\":\"" + escapeJson(subject) + "\","
+                    + "\"text\":\"" + escapeJson(text) + "\","
                     + "\"html\":\"" + escapeJson(html) + "\"}";
 
             URL url = new URL(emailServiceUrl);
