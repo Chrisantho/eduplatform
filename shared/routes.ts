@@ -1,15 +1,13 @@
 import { z } from 'zod';
 import { 
   insertUserSchema, 
-  insertExamSchema, 
   users, 
   exams, 
-  questions, 
-  options, 
   submissions,
-  CreateExamRequest, // Note: This is a type, so we need a Zod schema for it if we want runtime validation
-  insertQuestionSchema,
-  insertOptionSchema
+  createExamRequestSchema,
+  submitExamRequestSchema,
+  questions,
+  options
 } from './schema';
 
 // === SHARED ERROR SCHEMAS ===
@@ -28,23 +26,6 @@ export const errorSchemas = {
     message: z.string(),
   }),
 };
-
-// Define runtime schema for complex CreateExamRequest
-export const createExamRequestSchema = insertExamSchema.extend({
-  questions: z.array(
-    insertQuestionSchema.extend({
-      options: z.array(insertOptionSchema)
-    })
-  )
-});
-
-export const submitExamRequestSchema = z.object({
-  answers: z.array(z.object({
-    questionId: z.number(),
-    selectedOptionId: z.number().optional(),
-    textAnswer: z.string().optional(),
-  }))
-});
 
 // === API CONTRACT ===
 export const api = {
@@ -142,7 +123,8 @@ export const api = {
       method: 'GET' as const,
       path: '/api/submissions/:id' as const,
       responses: {
-        200: z.custom<typeof submissions.$inferSelect & { answers: typeof submissions.$inferSelect[] }>(),
+        200: z.custom<typeof submissions.$inferSelect & { exam: typeof exams.$inferSelect, answers: any[] }>(),
+        404: errorSchemas.notFound,
       },
     },
     submit: {
@@ -168,3 +150,5 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
+
+export type { CreateExamRequest, SubmitExamRequest } from './schema';

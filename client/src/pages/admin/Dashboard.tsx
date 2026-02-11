@@ -247,7 +247,10 @@ function CreateExamDialog() {
         text: q.text,
         type: q.type,
         points: q.points,
-        options: q.options
+        options: q.options.map((opt: any) => ({
+          text: opt.text,
+          isCorrect: opt.isCorrect
+        }))
       }))
     };
 

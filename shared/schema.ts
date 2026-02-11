@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -30,8 +30,6 @@ export const questions = pgTable("questions", {
   text: text("text").notNull(),
   type: text("type", { enum: ["MCQ", "SHORT_ANSWER"] }).notNull(),
   points: integer("points").notNull().default(1),
-  // For MCQ, we store options in a separate table, but for simplicity we could jsonb. 
-  // Let's use a separate table for normalized structure as requested.
 });
 
 export const options = pgTable("options", {
@@ -118,11 +116,29 @@ export const answersRelations = relations(answers, ({ one }) => ({
 // === BASE SCHEMAS ===
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true, createdById: true }); // createdById set by backend
-export const insertQuestionSchema = createInsertSchema(questions).omit({ id: true });
-export const insertOptionSchema = createInsertSchema(options).omit({ id: true });
+export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true, createdById: true });
+export const insertQuestionSchema = createInsertSchema(questions).omit({ id: true, examId: true });
+export const insertOptionSchema = createInsertSchema(options).omit({ id: true, questionId: true });
 export const insertSubmissionSchema = createInsertSchema(submissions).omit({ id: true, startTime: true, endTime: true, score: true, status: true });
 export const insertAnswerSchema = createInsertSchema(answers).omit({ id: true, isCorrect: true, pointsAwarded: true });
+
+// Shared schemas for routes
+export const submitExamRequestSchema = z.object({
+  answers: z.array(z.object({
+    questionId: z.number(),
+    selectedOptionId: z.number().optional(),
+    textAnswer: z.string().optional(),
+  }))
+});
+
+// Define runtime schema for complex CreateExamRequest
+export const createExamRequestSchema = insertExamSchema.extend({
+  questions: z.array(
+    insertQuestionSchema.extend({
+      options: z.array(insertOptionSchema)
+    })
+  )
+});
 
 // === EXPLICIT API TYPES ===
 
@@ -133,21 +149,9 @@ export type Option = typeof options.$inferSelect;
 export type Submission = typeof submissions.$inferSelect;
 export type Answer = typeof answers.$inferSelect;
 
-// Composite types for API responses
 export type QuestionWithOptions = Question & { options: Option[] };
 export type ExamWithQuestions = Exam & { questions: QuestionWithOptions[] };
 export type SubmissionWithDetails = Submission & { exam: Exam };
 
-export type CreateExamRequest = z.infer<typeof insertExamSchema> & {
-  questions: (z.infer<typeof insertQuestionSchema> & {
-    options: z.infer<typeof insertOptionSchema>[];
-  })[];
-};
-
-export type SubmitExamRequest = {
-  answers: {
-    questionId: number;
-    selectedOptionId?: number;
-    textAnswer?: string;
-  }[];
-};
+export type CreateExamRequest = z.infer<typeof createExamRequestSchema>;
+export type SubmitExamRequest = z.infer<typeof submitExamRequestSchema>;
