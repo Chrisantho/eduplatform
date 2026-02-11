@@ -230,7 +230,9 @@ function CreateExamDialog({
           options: (q.options || []).map((o: any) => ({
             text: o.text,
             isCorrect: o.isCorrect
-          }))
+          })),
+          keywords: q.keywords || [],
+          keywordsText: (q.keywords || []).join(", "),
         }))
       );
       setStep(2);
@@ -261,7 +263,9 @@ function CreateExamDialog({
         options: type === "MCQ" ? [
           { text: "", isCorrect: true },
           { text: "", isCorrect: false }
-        ] : []
+        ] : [],
+        keywords: type === "SHORT_ANSWER" ? [] : undefined,
+        keywordsText: "",
       }
     ]);
   };
@@ -306,7 +310,10 @@ function CreateExamDialog({
         options: q.options.map((opt: any) => ({
           text: opt.text,
           isCorrect: opt.isCorrect
-        }))
+        })),
+        keywords: q.type === "SHORT_ANSWER" && q.keywordsText
+          ? q.keywordsText.split(",").map((k: string) => k.trim()).filter((k: string) => k.length > 0)
+          : undefined,
       }))
     };
 
@@ -416,8 +423,25 @@ function CreateExamDialog({
                       <Textarea 
                         disabled 
                         placeholder="Students will type their answer here..." 
-                        className="min-h-[100px] bg-muted/50"
+                        className="min-h-[80px] bg-muted/50"
                       />
+                      <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-dashed">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Grading Keywords (comma-separated)</Label>
+                        <Input
+                          value={q.keywordsText || ""}
+                          onChange={e => updateQuestion(idx, 'keywordsText', e.target.value)}
+                          placeholder="e.g. atomic, consistency, isolation, durability"
+                          data-testid={`input-keywords-${idx}`}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Score is based on how many keywords appear in the student's answer. 
+                          {q.keywordsText && q.keywordsText.split(",").filter((k: string) => k.trim()).length > 0 && (
+                            <span className="ml-1 font-medium">
+                              ({q.keywordsText.split(",").filter((k: string) => k.trim()).length} keywords = {q.points} pts, each keyword worth {(q.points / q.keywordsText.split(",").filter((k: string) => k.trim()).length).toFixed(1)} pts)
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </CardContent>

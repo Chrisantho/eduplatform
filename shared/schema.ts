@@ -33,6 +33,7 @@ export const questions = pgTable("questions", {
   text: text("text").notNull(),
   type: text("type", { enum: ["MCQ", "SHORT_ANSWER"] }).notNull(),
   points: integer("points").notNull().default(1),
+  keywords: text("keywords").array(),
 });
 
 export const options = pgTable("options", {
@@ -173,7 +174,8 @@ export const submitExamRequestSchema = z.object({
 export const createExamRequestSchema = insertExamSchema.extend({
   questions: z.array(
     insertQuestionSchema.extend({
-      options: z.array(insertOptionSchema)
+      options: z.array(insertOptionSchema),
+      keywords: z.array(z.string()).optional(),
     })
   )
 });

@@ -213,6 +213,7 @@ export async function registerRoutes(
     if ((req.user as any).role === "STUDENT") {
       const sanitizedQuestions = exam.questions.map(q => ({
         ...q,
+        keywords: undefined,
         options: q.options.map((o: any) => ({ ...o, isCorrect: undefined }))
       }));
       return res.json({ ...exam, questions: sanitizedQuestions });
@@ -310,7 +311,17 @@ export async function registerRoutes(
               score += question.points || 0;
             }
           } else if (question.type === "SHORT_ANSWER" && studentAnswer.textAnswer) {
-            score += question.points || 0; 
+            const questionKeywords = (question as any).keywords as string[] | null;
+            if (questionKeywords && questionKeywords.length > 0) {
+              const answerLower = studentAnswer.textAnswer.toLowerCase();
+              const matchedCount = questionKeywords.filter(kw => 
+                answerLower.includes(kw.toLowerCase())
+              ).length;
+              const ratio = matchedCount / questionKeywords.length;
+              score += Math.round((question.points || 0) * ratio);
+            } else {
+              score += question.points || 0;
+            }
           }
         }
       }

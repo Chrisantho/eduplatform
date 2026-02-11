@@ -125,6 +125,7 @@ export class DatabaseStorage implements IStorage {
         text: q.text,
         type: q.type,
         points: q.points,
+        keywords: q.keywords || null,
       }).returning();
 
       if (q.options && q.options.length > 0) {
@@ -172,6 +173,7 @@ export class DatabaseStorage implements IStorage {
         text: q.text,
         type: q.type,
         points: q.points,
+        keywords: q.keywords || null,
       }).returning();
 
       if (q.options && q.options.length > 0) {
