@@ -183,15 +183,190 @@ export async function registerRoutes(
     });
   });
 
-  // Seed Admin User
+  // Seed Admin User and Initial Exam
   const adminUser = await storage.getUserByUsername("admin@example.com");
   if (!adminUser) {
     const hashedPassword = await hashPassword("adminpassword");
-    await storage.createUser({
+    const admin = await storage.createUser({
       username: "admin@example.com",
       password: hashedPassword,
       fullName: "System Admin",
       role: "ADMIN"
+    });
+
+    // Seed an initial exam
+    await storage.createExam(admin.id, {
+      title: "General Knowledge Assessment",
+      description: "A comprehensive test covering science, history, and literature.",
+      duration: 30,
+      isActive: true,
+      questions: [
+        {
+          text: "What is the capital of France?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "London", isCorrect: false },
+            { text: "Paris", isCorrect: true },
+            { text: "Berlin", isCorrect: false },
+            { text: "Madrid", isCorrect: false }
+          ]
+        },
+        {
+          text: "Which planet is known as the Red Planet?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Venus", isCorrect: false },
+            { text: "Mars", isCorrect: true },
+            { text: "Jupiter", isCorrect: false },
+            { text: "Saturn", isCorrect: false }
+          ]
+        },
+        {
+          text: "Who wrote 'Romeo and Juliet'?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Charles Dickens", isCorrect: false },
+            { text: "William Shakespeare", isCorrect: true },
+            { text: "Mark Twain", isCorrect: false },
+            { text: "Jane Austen", isCorrect: false }
+          ]
+        },
+        {
+          text: "What is the largest ocean on Earth?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Atlantic Ocean", isCorrect: false },
+            { text: "Indian Ocean", isCorrect: false },
+            { text: "Arctic Ocean", isCorrect: false },
+            { text: "Pacific Ocean", isCorrect: true }
+          ]
+        },
+        {
+          text: "In which year did the Titanic sink?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "1910", isCorrect: false },
+            { text: "1912", isCorrect: true },
+            { text: "1915", isCorrect: false },
+            { text: "1920", isCorrect: false }
+          ]
+        },
+        {
+          text: "Which element has the chemical symbol 'O'?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Gold", isCorrect: false },
+            { text: "Oxygen", isCorrect: true },
+            { text: "Silver", isCorrect: false },
+            { text: "Iron", isCorrect: false }
+          ]
+        },
+        {
+          text: "How many continents are there on Earth?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "5", isCorrect: false },
+            { text: "6", isCorrect: false },
+            { text: "7", isCorrect: true },
+            { text: "8", isCorrect: false }
+          ]
+        },
+        {
+          text: "What is the fastest land animal?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Lion", isCorrect: false },
+            { text: "Cheetah", isCorrect: true },
+            { text: "Eagle", isCorrect: false },
+            { text: "Horse", isCorrect: false }
+          ]
+        },
+        {
+          text: "Which country is home to the Kangaroo?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "India", isCorrect: false },
+            { text: "Australia", isCorrect: true },
+            { text: "South Africa", isCorrect: false },
+            { text: "Brazil", isCorrect: false }
+          ]
+        },
+        {
+          text: "What is the boiling point of water in Celsius?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "90°C", isCorrect: false },
+            { text: "100°C", isCorrect: true },
+            { text: "110°C", isCorrect: false },
+            { text: "120°C", isCorrect: false }
+          ]
+        },
+        {
+          text: "Who painted the Mona Lisa?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Pablo Picasso", isCorrect: false },
+            { text: "Leonardo da Vinci", isCorrect: true },
+            { text: "Vincent van Gogh", isCorrect: false },
+            { text: "Claude Monet", isCorrect: false }
+          ]
+        },
+        {
+          text: "What is the smallest prime number?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "1", isCorrect: false },
+            { text: "2", isCorrect: true },
+            { text: "3", isCorrect: false },
+            { text: "5", isCorrect: false }
+          ]
+        },
+        {
+          text: "Which is the tallest mountain in the world?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "K2", isCorrect: false },
+            { text: "Mount Everest", isCorrect: true },
+            { text: "Kangchenjunga", isCorrect: false },
+            { text: "Lhotse", isCorrect: false }
+          ]
+        },
+        {
+          text: "What is the currency of Japan?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "Yuan", isCorrect: false },
+            { text: "Won", isCorrect: false },
+            { text: "Yen", isCorrect: true },
+            { text: "Ringgit", isCorrect: false }
+          ]
+        },
+        {
+          text: "How many colors are there in a rainbow?",
+          type: "MCQ",
+          points: 10,
+          options: [
+            { text: "6", isCorrect: false },
+            { text: "7", isCorrect: true },
+            { text: "8", isCorrect: false },
+            { text: "9", isCorrect: false }
+          ]
+        }
+      ]
     });
   }
 

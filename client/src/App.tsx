@@ -11,6 +11,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import StudentDashboard from "@/pages/student/Dashboard";
+import ExamHistory from "@/pages/student/History";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import TakeExam from "@/pages/exam/TakeExam";
 import NotFound from "@/pages/not-found";
@@ -49,6 +50,10 @@ function Router() {
           
           <Route path="/student">
             <ProtectedRoute component={StudentDashboard} allowedRoles={["STUDENT"]} />
+          </Route>
+          
+          <Route path="/student/history/:id">
+            <ProtectedRoute component={ExamHistory} allowedRoles={["STUDENT"]} />
           </Route>
           
           <Route path="/admin">

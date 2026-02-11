@@ -3,12 +3,12 @@ import { useExams, useDeleteExam, useCreateExam } from "@/hooks/use-exams";
 import { useSubmissions } from "@/hooks/use-submissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Users, FileText, Clock, BarChart3, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Users, FileText, Clock, BarChart3, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { CreateExamRequest } from "@shared/routes";
@@ -27,7 +27,6 @@ export default function AdminDashboard() {
         <CreateExamDialog />
       </div>
 
-      {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -222,7 +221,6 @@ function CreateExamDialog() {
     const newOpts = [...newQs[qIndex].options];
     newOpts[oIndex] = { ...newOpts[oIndex], [field]: value };
     
-    // If setting correct answer, unset others for simplicity (though multiple could be correct)
     if (field === "isCorrect" && value === true) {
        newOpts.forEach((opt, idx) => {
          if (idx !== oIndex) opt.isCorrect = false;

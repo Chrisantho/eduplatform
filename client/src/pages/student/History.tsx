@@ -1,0 +1,106 @@
+import { useSubmission } from "@/hooks/use-submissions";
+import { useRoute } from "wouter";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, CheckCircle2, XCircle, Award, Calendar, Clock, ArrowLeft } from "lucide-react";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+
+export default function ExamHistory() {
+  const [, params] = useRoute("/student/history/:id");
+  const { data: submission, isLoading } = useSubmission(Number(params?.id));
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!submission) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h2 className="text-2xl font-bold">Submission not found</h2>
+        <Link href="/student">
+          <Button variant="link" className="mt-4">Back to Dashboard</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const isPassed = (submission.score || 0) >= 70;
+
+  return (
+    <div className="container mx-auto px-4 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center gap-4">
+        <Link href="/student">
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-display font-bold">Exam Results</h1>
+          <p className="text-muted-foreground">{submission.exam.title}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Card className={`md:col-span-1 border-2 ${isPassed ? "border-green-500/20" : "border-yellow-500/20"}`}>
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-sm font-medium uppercase tracking-wider opacity-60">Your Score</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <div className={`text-6xl font-black ${isPassed ? "text-green-600" : "text-yellow-600"}`}>
+              {submission.score}%
+            </div>
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${
+              isPassed ? "bg-green-100 text-green-700 dark:bg-green-900/30" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30"
+            }`}>
+              {isPassed ? <Award className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+              {isPassed ? "PASSED" : "NEEDS IMPROVEMENT"}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Assessment Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="flex items-start gap-3">
+              <Calendar className="h-5 w-5 text-primary mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Completion Date</p>
+                <p className="text-sm text-muted-foreground">
+                  {submission.endTime ? format(new Date(submission.endTime), "PPP p") : "N/A"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Clock className="h-5 w-5 text-primary mt-0.5" />
+              <div>
+                <p className="text-sm font-medium">Status</p>
+                <p className="text-sm text-muted-foreground capitalize">{submission.status.toLowerCase()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Exam Summary</CardTitle>
+          <CardDescription>Review your performance in "{submission.exam.title}"</CardDescription>
+        </CardHeader>
+        <CardContent className="prose dark:prose-invert max-w-none">
+          <p>{submission.exam.description || "No description available for this exam."}</p>
+          <div className="flex items-center gap-2 mt-4 text-green-600 font-medium">
+            <CheckCircle2 className="h-5 w-5" />
+            <span>Submission successfully recorded and graded.</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
