@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16", "java-graalvm-22"]
+modules = ["nodejs-20", "web", "java-graalvm-22", "postgresql-16"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -9,6 +9,10 @@ packages = ["jdk", "maven"]
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
 [env]
 PORT = "5000"
