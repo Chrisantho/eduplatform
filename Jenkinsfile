@@ -49,21 +49,12 @@ pipeline {
         }
 
         // --- Frontend ---
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    sh 'npm install'
-                    sh 'npm run build'
-                }
-            }
-        }
-
         stage('Build & Push Frontend Docker Image') {
             steps {
                 dir('frontend') {
                     withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CREDENTIALS}", usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                        sh "docker build -t ${FRONTEND_IMAGE} ."
+                        sh "docker build -f Dockerfile -t ${FRONTEND_IMAGE} ."
                         sh "docker push ${FRONTEND_IMAGE}"
                         sh "docker rmi ${FRONTEND_IMAGE} || true"
                     }
