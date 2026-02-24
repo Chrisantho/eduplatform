@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: edu-postgres
+    environment:
+      POSTGRES_USER: eduuser
+      POSTGRES_PASSWORD: edupass
+      POSTGRES_DB: edudb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - edu-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edu-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://edu-postgres:5432/edudb
+      SPRING_DATASOURCE_USERNAME: eduuser
+      SPRING_DATASOURCE_PASSWORD: edupass
+    depends_on:
+      - postgres
+    networks:
+      - edu-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: edu-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - edu-network
+
+volumes:
+  pgdata:
+
+networks:
+  edu-network:
+    driver: bridge
