@@ -1,0 +1,34 @@
+---
+- name: Install Docker on EC2 instances
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+    
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+    
+    - name: Verify Docker installation
+      command: docker --version
+      register: docker_version
+    
+    - name: Show Docker version
+      debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"

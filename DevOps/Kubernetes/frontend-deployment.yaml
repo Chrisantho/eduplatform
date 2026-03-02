@@ -1,0 +1,32 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: eduplatform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      volumes:
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+      containers:
+      - name: frontend
+        image: chtwirls/edu-frontend:latest
+        ports:
+        - containerPort: 80
+        command: ["/bin/sh"]
+        args: ["-c", "cp /config/nginx.conf /etc/nginx/nginx.conf && nginx -g 'daemon off;'"]
+        volumeMounts:
+        - name: nginx-config-volume
+          mountPath: /config
+        env:
+        - name: BACKEND_URL
+          value: http://backend-service:8080

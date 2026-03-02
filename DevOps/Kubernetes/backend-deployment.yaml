@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: eduplatform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.28
+        command: ['sh', '-c', 'until nc -zv postgres-service 5432; do echo "Waiting for postgres..."; sleep 2; done;']
+      containers:
+      - name: backend
+        image: chtwirls/edu-backend:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres-service:5432/eduplatform
+        - name: SPRING_DATASOURCE_USERNAME
+          value: eduuser
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: edupassword
