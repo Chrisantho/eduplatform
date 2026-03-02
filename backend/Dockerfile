@@ -1,16 +1,21 @@
-# Build stage: Use Maven with Java 21 to compile
+# Stage 1: Build
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy pom.xml and source code
-COPY pom.xml .
-COPY src ./src
+# Copy only pom first for caching
+COPY backend/pom.xml ./
+
+# Download dependencies first to leverage Docker cache
+RUN mvn dependency:go-offline -B
+
+# Copy the rest of the source code
+COPY backend/src ./src
 
 # Build the JAR without running tests
 RUN mvn clean package -DskipTests
 
-# Runtime stage: Use your required JDK 27 image
-FROM openjdk:27-ea-8-jdk-slim-trixie
+# Stage 2: Runtime
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Copy the JAR from the build stage
